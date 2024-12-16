@@ -1,8 +1,8 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-from helpers.generate_dummy import generate_customer, generate_product, generate_region
-from helpers.insert_data import insert_data_customer, insert_data_product, insert_data_region
+from helpers.generate_dummy import generate_customer, generate_product, generate_region, generate_sales_transactions
+from helpers.insert_data import insert_data_customer, insert_data_product, insert_data_region, insert_sales_transactions
 
 # Airflow DAG Definition
 default_args = {
@@ -51,4 +51,14 @@ with DAG(
         python_callable=insert_data_region,      
     )
 
-    generate_data_task >> insert_data_customer_task  >> generate_data_product_task >> insert_data_product_task >> generate_data_region_task >> insert_data_region_task
+    generate_data_sales_transactions_task = PythonOperator(
+        task_id="generate_data_sales_transactions",
+        python_callable=generate_sales_transactions,
+    )    
+    
+    insert_data_sales_transactions_task = PythonOperator(
+        task_id="insert_data_sales_transactions",
+        python_callable=insert_sales_transactions,      
+    )
+
+    generate_data_task >> insert_data_customer_task  >> generate_data_product_task >> insert_data_product_task >> generate_data_region_task >> insert_data_region_task >> generate_data_sales_transactions_task >> insert_data_sales_transactions_task

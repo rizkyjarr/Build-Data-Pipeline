@@ -1,5 +1,5 @@
 import psycopg2
-from helpers.generate_dummy import generate_customer, generate_product, generate_region
+from helpers.generate_dummy import generate_customer, generate_product, generate_region, generate_sales_transactions
 
 def db_connection():
     return psycopg2.connect(
@@ -121,5 +121,54 @@ def insert_data_region():
                 print(f"Skipped (exists): {region_data['region_name']}")
 
             print("Data is not find in the db after 10 attempts")
+    finally:
+        conn.close()
+
+
+def insert_sales_transactions():
+    conn = db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Ensure the table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS sales_transactions (
+                    id SERIAL PRIMARY KEY,
+                    sale_date DATE NOT NULL,
+                    product_id INTEGER NOT NULL,
+                    customer_id INTEGER NOT NULL,
+                    region_id INTEGER NOT NULL,
+                    quantity INTEGER NOT NULL,
+                    price NUMERIC NOT NULL,
+                    total_revenue NUMERIC NOT NULL,
+                    created_at TIMESTAMP NOT NULL,
+                    FOREIGN KEY (product_id) REFERENCES product(id),
+                    FOREIGN KEY (customer_id) REFERENCES customer(id),
+                    FOREIGN KEY (region_id) REFERENCES region(id)
+                )
+            """)
+            conn.commit()
+            print("Sales fact table has been created or verified.")
+
+        # Generate sales data
+        sales_transactions_data = generate_sales_transactions(conn)
+
+        # Insert the data
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO sales_transactions (
+                    sale_date, product_id, customer_id, region_id, quantity, price, total_revenue, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                sales_transactions_data['sale_date'],
+                sales_transactions_data['product_id'],
+                sales_transactions_data['customer_id'],
+                sales_transactions_data['region_id'],
+                sales_transactions_data['quantity'],
+                sales_transactions_data['price'],
+                sales_transactions_data['total_revenue'],
+                sales_transactions_data['created_at']
+            ))
+            conn.commit()
+            print("Sales transactions data has been inserted into the table.")
     finally:
         conn.close()
