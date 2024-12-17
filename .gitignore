@@ -2,3 +2,4 @@ airflow_app/logs/
 airflow_app/dags/__pycache__/
 airflow_app/dags/helpers/__pycache__/
 postgresql_app/postgresql_app/*
+credentials.json

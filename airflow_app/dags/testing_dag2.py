@@ -21,7 +21,7 @@ with DAG(
     dag_id="generate_biodiesel_data_to_DB",
     default_args=default_args,
     description="Generate and insert biodiesel data records into PostgreSQL",
-    schedule_interval=timedelta(minutes=15),  # Every 15 minutes
+    schedule_interval=timedelta(minutes=5),  # Every 15 minutes
     start_date=datetime(2024, 1, 1),  # Set to a recent date
     catchup=False,
     max_active_runs=1,
