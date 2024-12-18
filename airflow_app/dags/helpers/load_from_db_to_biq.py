@@ -6,7 +6,7 @@ import os
 from decimal import Decimal
 
 # Set Google Cloud Credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\credentials.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\airflow_app\credentials.json"
 
 # PostgreSQL Connection
 def db_connection():
@@ -83,7 +83,7 @@ def load_to_bigquery(table_name, columns, rows, schema, partition_field=None):
         print(f"Loaded {len(rows)} rows into {table_id}.")
 
 def process_table(table_name, date_column, schema, partition_field=None, h_minus=1):
-    ensure_bigquery_table(f"stg_{table_name}", schema, partition_field)
+    #ensure_bigquery_table(f"stg_{table_name}", schema, partition_field)
     columns, rows = extract_incremental_data(table_name, date_column, h_minus)
 
     if rows:
