@@ -4,3 +4,5 @@ airflow_app/dags/helpers/__pycache__/
 postgresql_app/postgresql_app/*
 credentials.json
 airflow_app/dags/testing_dag.py
+data_dummy/
+data_generation/
