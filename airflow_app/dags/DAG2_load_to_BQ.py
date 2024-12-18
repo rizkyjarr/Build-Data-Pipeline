@@ -105,7 +105,7 @@ default_args = {
 with DAG(
     dag_id="DAG2_load_to_BQ",
     default_args=default_args,
-    schedule_interval="0 6 * * *",  # This code intructs to update daily at 6 AM
+    schedule_interval="0 9 * * *",  # This code intructs to update daily at 6 AM
     start_date=datetime(2024, 1, 1),
     catchup=False
 ) as dag:
@@ -180,7 +180,7 @@ with DAG(
                     "schema": table["schema"],
                     "date_column": "created_at",
                     "partition_field": table["partition_field"],
-                    "h_minus": 2,
+                    "h_minus": 1,
                 }
             )
 
