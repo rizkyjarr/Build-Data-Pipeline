@@ -10,36 +10,32 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/credentials.json"
 
 # BigQuery Configuration
 BIGQUERY_PROJECT = "purwadika"
-DATASET = "rizky_biodiesel_capstone3"
+DATASET = "rizky_biodiesel_capstone3"  # Single dataset for staging and final
 
-# Function to create the dataset if not exists
-def ensure_dataset(dataset_name, location="asia-southeast2"):
-    client = bigquery.Client()
-    dataset_id = f"{BIGQUERY_PROJECT}.{dataset_name}"
-    try:
-        client.get_dataset(dataset_id)
-        print(f"Dataset {dataset_id} already exists.")
-    except Exception:
-        dataset = bigquery.Dataset(dataset_id)
-        dataset.location = location
-        client.create_dataset(dataset, exists_ok=True)
-        print(f"Dataset {dataset_id} created successfully.")
-
-# Function to replicate staging tables
-def replicate_table(staging_table, table_name):
+# Function to replicate staging table to final table with deduplication and partitioning
+def replicate_table(staging_table, final_table, unique_key, partition_field):
+    """Replicates data from a staging table to a final table with partitioning and deduplication."""
     client = bigquery.Client()
     staging_table_id = f"{BIGQUERY_PROJECT}.{DATASET}.{staging_table}"
-    table_id = f"{BIGQUERY_PROJECT}.{DATASET}.{table_name}"
+    final_table_id = f"{BIGQUERY_PROJECT}.{DATASET}.{final_table}"
 
     query = f"""
-    CREATE OR REPLACE TABLE `{table_id}` AS
-    SELECT * FROM `{staging_table_id}`
+    CREATE OR REPLACE TABLE `{final_table_id}`
+    PARTITION BY DATE({partition_field})
+    CLUSTER BY {unique_key} AS
+    SELECT * EXCEPT(row_num)
+    FROM (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY {unique_key} ORDER BY {partition_field} DESC) AS row_num
+        FROM `{staging_table_id}`
+    )
+    WHERE row_num = 1;
     """
     query_job = client.query(query)
     query_job.result()  # Wait for the query to finish
-    print(f"Replicated {staging_table} to {table_name}")
+    print(f"Replicated and deduplicated {staging_table} to {final_table} with partitioning.")
 
-# Function to create aggregated sales_dashboard table
+# Function to create the sales dashboard table
 def create_sales_dashboard():
     client = bigquery.Client()
     query = f"""
@@ -69,7 +65,7 @@ def create_sales_dashboard():
     """
     query_job = client.query(query)
     query_job.result()  # Wait for the query to finish
-    print("Aggregated table `sales_dashboard` created/updated successfully.")
+    print("Sales dashboard created successfully.")
 
 # Airflow DAG Definition
 default_args = {
@@ -81,42 +77,34 @@ default_args = {
 with DAG(
     dag_id="DAG3_final_data",
     default_args=default_args,
-    schedule_interval="0 6 * * *",  # Daily at 6 AM
+    schedule_interval="0 10 * * *",  # Daily at 6 AM
     start_date=datetime(2024, 1, 1),
-    catchup=False,
+    catchup=False
 ) as dag:
 
-    # Ensure Dataset Task
-    ensure_dataset_task = PythonOperator(
-        task_id="ensure_dataset",
-        python_callable=ensure_dataset,
-        op_kwargs={"dataset_name": DATASET, "location": "asia-southeast2"},
-    )
+    tables = [
+        {"staging": "stg_sales_transactions", "final": "sales_transactions", "unique_key": "id", "partition_field": "created_at"},
+        {"staging": "stg_customer", "final": "customer", "unique_key": "id", "partition_field": "created_at"},
+        {"staging": "stg_product", "final": "product", "unique_key": "id", "partition_field": "created_at"},
+        {"staging": "stg_region", "final": "region", "unique_key": "id", "partition_field": "created_at"},
+    ]
 
-    # Replication Task Group
     with TaskGroup(group_id="replication_tasks") as replication_tasks:
-        tables = [
-            {"staging": "stg_sales_transactions", "table_name": "sales_transactions"},
-            {"staging": "stg_customer", "table_name": "customer"},
-            {"staging": "stg_product", "table_name": "product"},
-            {"staging": "stg_region", "table_name": "region"},
-        ]
-
         for table in tables:
             PythonOperator(
-                task_id=f"replicate_{table['table_name']}",
+                task_id=f"replicate_{table['final']}",
                 python_callable=replicate_table,
                 op_kwargs={
                     "staging_table": table["staging"],
-                    "table_name": table["table_name"],
+                    "final_table": table["final"],
+                    "unique_key": table["unique_key"],
+                    "partition_field": table["partition_field"],
                 },
             )
 
-    # Aggregation Task
-    aggregate_task = PythonOperator(
+    create_dashboard_task = PythonOperator(
         task_id="create_sales_dashboard",
         python_callable=create_sales_dashboard,
     )
 
-    # Define DAG dependencies
-    ensure_dataset_task >> replication_tasks >> aggregate_task
+    replication_tasks >> create_dashboard_task
