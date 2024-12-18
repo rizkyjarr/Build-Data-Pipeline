@@ -18,7 +18,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="generate_biodiesel_data_to_DB",
+    dag_id="DAG1_generate_data_load_to_postgre",
     default_args=default_args,
     description="Generate and insert biodiesel data records into PostgreSQL",
     schedule_interval=timedelta(minutes=5),  # Every 15 minutes

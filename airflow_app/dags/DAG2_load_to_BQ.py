@@ -29,18 +29,28 @@ BIGQUERY_DATASET = "rizky_biodiesel_capstone3"
 def ensure_bigquery_table(table_name, schema, partition_field=None):
     client = bigquery.Client()
     table_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.{table_name}"
+
     try:
+        # Check if the table exists
         client.get_table(table_id)
         print(f"Table {table_id} already exists.")
-    except Exception as e:
-        print(f"Table {table_id} does not exist. Attempting to create it. Error: {e}")
+    except bigquery.NotFound:
+        # Table does not exist, attempt to create it
+        print(f"Table {table_id} does not exist. Attempting to create it.")
         table = bigquery.Table(table_id, schema=schema)
         if partition_field:
             table.time_partitioning = bigquery.TimePartitioning(
                 type_=bigquery.TimePartitioningType.DAY, field=partition_field
             )
-        client.create_table(table)
-        print(f"Table {table_id} created successfully.")
+        try:
+            client.create_table(table)
+            print(f"Table {table_id} created successfully.")
+        except bigquery.Conflict:
+            # Table creation conflict (already exists due to concurrent operations)
+            print(f"Table {table_id} already exists after retry.")
+    except Exception as e:
+        print(f"Error while ensuring table {table_id}: {e}")
+        raise
 
 def extract_and_load(table_name, schema, date_column, partition_field=None, h_minus=1):
     """Extracts data from PostgreSQL and loads it into BigQuery."""
@@ -93,7 +103,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="postgres_to_bigquery_pipeline_fixed",
+    dag_id="DAG2_load_to_BQ",
     default_args=default_args,
     schedule_interval="0 6 * * *",  # This code intructs to update daily at 6 AM
     start_date=datetime(2024, 1, 1),
@@ -126,6 +136,27 @@ with DAG(
                 bigquery.SchemaField("created_at", "TIMESTAMP"),
             ],
             "partition_field": "created_at"
+        },
+        {
+            "name": "product",
+            "schema": [
+                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+                bigquery.SchemaField("name", "STRING"),
+                bigquery.SchemaField("type", "STRING"),
+                bigquery.SchemaField("price", "INTEGER"),
+                bigquery.SchemaField("created_at", "TIMESTAMP"),
+            ],
+            "partition_field": "created_at"
+        },
+        {
+            "name": "region",
+            "schema": [
+                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+                bigquery.SchemaField("region_name", "STRING"),
+                bigquery.SchemaField("province", "STRING"),
+                bigquery.SchemaField("created_at", "TIMESTAMP"),
+            ],
+            "partition_field": "created_at"
         }
     ]
 
@@ -149,7 +180,7 @@ with DAG(
                     "schema": table["schema"],
                     "date_column": "created_at",
                     "partition_field": table["partition_field"],
-                    "h_minus": 1,
+                    "h_minus": 2,
                 }
             )
 
