@@ -14,7 +14,7 @@ client = bigquery.Client()
 BIGQUERY_PROJECT = "purwadika"
 BIGQUERY_DATASET = "rizky_biodiesel_capstone3"
 
-#declare function creating connection with postgreDB
+#declare function creating connection with postgreDB that;s containerized in docker
 def db_connection():
     return psycopg2.connect(
         host="host.docker.internal",
@@ -22,6 +22,7 @@ def db_connection():
         user="de_admin",
         password="biodiesel"
     )
+
 
 #declare function to check whether table has existed or not in BIGQUERY
 def table_exists(table_name):
@@ -34,6 +35,7 @@ def table_exists(table_name):
     except NotFound:
         # print("Table {} is not found".format(table_id))
         return False
+
 
 
 #declare function to create staging table, it will create table if data has not existed in BIGQUERY.
@@ -51,6 +53,7 @@ def create_table_staging(table_name, bq_schema):
         print(f"Created table {table.project}.{table.dataset_id}.stg_{table.table_id}, "f"partitioned on column {table.time_partitioning.field}.")
 
 
+
 #declare function to give a few time to delay after table creation, this is to make sure that table creation is accurate before extracting data
 def wait_for_table_creation(table_name, max_retries=5, delay=10):
     for _ in range(max_retries):
@@ -62,11 +65,13 @@ def wait_for_table_creation(table_name, max_retries=5, delay=10):
     raise Exception(f"Table {table_name} was not created within the expected time.")
 
 
+
 #declare function to give a few time to delay after table creation, this is to make sure that table creation is accurate before extracting data
 def create_table_with_delay(table_name, bq_schema):
     create_table_staging(table_name, bq_schema)
     wait_for_table_creation(table_name)
     time.sleep(30)  # Additional buffer
+
 
 
 #declare function to convert nonserializable objects (datetime, time, and decimal). These type has to be serialized into JSON 
@@ -77,6 +82,7 @@ def serialize_value(value):
     elif isinstance(value, Decimal):
         return float(value)  # Convert Decimal to float
     return value
+
 
 
 #declare function to fetch data from target table in PostgreDB     
@@ -109,6 +115,7 @@ def extract_from_postgre(table_name, db_schema, date_column, partition_field=Non
         conn.close()
 
 
+
 #declare function to load fetched data to staging table in BIGQUERY.
 def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_field=None, h_minus=1):
 
@@ -127,6 +134,7 @@ def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_
         raise Exception (f"Failed to insert rows into {table_id}:{errors}")
     else:
         print(f"Successfully inserted {len(data_to_insert)} rows into staging table {table_id}")
+
 
 
 #declare to replicate staging table to final table
@@ -150,6 +158,7 @@ def replicate_table(table_name, unique_key, partition_field):
     query_job = client.query(query)
     query_job.result()
     print(f"Final table for {final_table_id} has been successfully created")
+
 
 
 #declare to create sales_dashboard table for analytics and dashboard
@@ -185,6 +194,8 @@ def create_sales_dashboard():
     query_job.result() 
     print("Sales dashboard has been created successfully.")
 
+
+#this script below for manual testing
 # tables = [
 #         {
 #             "name": "sales_transactions",

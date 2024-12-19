@@ -23,6 +23,8 @@ region_and_provinces = {
 }
 
 
+
+#declare function to create connection with postgreDB
 def db_connection():
     return psycopg2.connect(
         host="host.docker.internal",
@@ -31,9 +33,11 @@ def db_connection():
         password="biodiesel"
     )
 
+
+#declare function to generate customer data
 def generate_customer():
     customer_data = {
-        'name': random.choice(companies_list),
+        'name': random.choice(companies_list), #random within predefined choice, in B2B business, customers are in small numbers
         'sector': random.choice(company_sector),
         'type': random.choice(company_type),
         'created_at': created_at_str
@@ -41,18 +45,23 @@ def generate_customer():
     print(f"Customer data has been generated: {customer_data}")
     return customer_data
 
+
+#declare function to generate customer data
 def generate_product():
     product_data = {
-        'name': random.choice(product_list),
+        'name': random.choice(product_list), #random within predefined choice, in B2B business, products are in small numbers
         'type': random.choice(product_type),
         'price': random.randint(9800,10000),
         'created_at': created_at_str
     }
     print(f"Product data has been generated: {product_data}")
     return product_data
-    
+
+
+
+#declare function to generate region sales data
 def generate_region():
-    region_name = random.choice(list(region_and_provinces.keys()))
+    region_name = random.choice(list(region_and_provinces.keys())) #random within predefined dictionaries, in B2B business, regions are in small numbers
     province = random.choice(region_and_provinces[region_name])
     
     region_data = {
@@ -63,31 +72,37 @@ def generate_region():
     print(f"Region data has been generated: {region_data}")
     return region_data
 
+
+
+#declare function to generate region sales data
 def generate_sales_transactions(conn):
     conn = db_connection()
-    # Get product_id and price from product table
+    
+    
     with conn.cursor() as cur:
+       
+        #product_id is fetched from product table
         cur.execute("SELECT id, price FROM product ORDER BY RANDOM() LIMIT 1")
         product = cur.fetchone()
         if not product:
             raise ValueError("No products found in product table.")
         product_id, price = product
 
-        # Get customer_id from customer table
+        #customer_id column is fetched from customer table
         cur.execute("SELECT id FROM customer ORDER BY RANDOM() LIMIT 1")
         customer = cur.fetchone()
         if not customer:
             raise ValueError("No customers found in customer table.")
         customer_id = customer[0]
 
-        # Get region_id from region table
+        #region_id column is fetched from region table
         cur.execute("SELECT id FROM region ORDER BY RANDOM() LIMIT 1")
         region = cur.fetchone()
         if not region:
             raise ValueError("No regions found in region table.")
         region_id = region[0]
 
-        # Generate random sales data
+        #declare parameters for sales_transactions data
         quantity = random.randint(5000, 10000)  # Random quantity in liters
         total_revenue = quantity * price  # Calculate total revenue
         created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

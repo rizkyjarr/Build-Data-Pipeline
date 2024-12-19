@@ -18,7 +18,7 @@ BIGQUERY_DATASET = "rizky_biodiesel_capstone3"
 
 default_args = {
     'owner': 'airflow',
-    'retries': 5, #i made retries to make sure ensuring table and creating table is carried out before extracting data
+    'retries': 5, #i made 5 retries to make sure ensuring table and creating table is carried out before extracting data
     'retry_delay': timedelta(seconds=30),
 }
 
