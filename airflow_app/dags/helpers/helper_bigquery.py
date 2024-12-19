@@ -5,6 +5,7 @@ import psycopg2
 from datetime import datetime, timedelta, date
 import pandas as pd
 from decimal import Decimal
+import time
 
 # Set Google Cloud Credentials
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\airflow_app\credentials.json"
@@ -45,6 +46,20 @@ def create_table_staging(table_name, bq_schema):
 
         print(f"Created table {table.project}.{table.dataset_id}.stg_{table.table_id}, "f"partitioned on column {table.time_partitioning.field}.")
 
+def wait_for_table_creation(table_name, max_retries=5, delay=10):
+    for _ in range(max_retries):
+        if table_exists(table_name):
+            print(f"Table {table_name} is now available.")
+            return
+        print(f"Waiting for table {table_name} to be created...")
+        time.sleep(delay)
+    raise Exception(f"Table {table_name} was not created within the expected time.")
+
+def create_table_with_delay(table_name, bq_schema):
+    create_table_staging(table_name, bq_schema)
+    wait_for_table_creation(table_name)
+    time.sleep(30)  # Additional buffer
+
 def serialize_value(value):
     """Helper function to convert non-serializable objects to serializable ones."""
     if isinstance(value, (datetime, date)):
@@ -71,7 +86,7 @@ def extract_from_postgre(table_name, db_schema, date_column, partition_field=Non
             cursor.execute(query)
             if cursor.rowcount == 0:
                 print(f"No rows found for table {table_name} on {target_date}.")
-                return
+                return []
             columns = [desc[0] for desc in cursor.description]
             rows = cursor.fetchall()
             incremental_data = [
@@ -86,14 +101,25 @@ def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_
 
     data_to_insert = extract_from_postgre(table_name, db_schema, date_column, partition_field, h_minus)
 
+    if not data_to_insert:
+        print(f"No new data is found within the table. Task will be marked successfully")
+        return
+
     table_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.stg_{table_name}"
 
     errors = client.insert_rows_json(table_id, data_to_insert)
 
     if errors:
         print("Errors occured while inserting data into BigQuery")
+        raise Exception (f"Failed to insert rows into {table_id}:{errors}")
     else:
         print(f"Successfully inserted {len(data_to_insert)} rows into staging table {table_id}")
+
+
+def replicate_table(staging_table, final_table, unique_key, partition_field):
+
+    client = bigquery.Client()
+    staging_table_id = f"{BIGQUERY_PROJECT}.{}"
 
 # tables = [
 #         {

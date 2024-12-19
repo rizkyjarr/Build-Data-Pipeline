@@ -7,7 +7,7 @@ from decimal import Decimal
 import psycopg2
 import os
 import pytz
-from helpers.helper_bigquery import db_connection, table_exists, create_table_staging, serialize_value,extract_from_postgre, insert_incremental_data_to_bq
+from helpers.helper_bigquery import db_connection, table_exists, create_table_staging, serialize_value,extract_from_postgre, insert_incremental_data_to_bq, create_table_with_delay
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/credentials.json"
 client = bigquery.Client()
@@ -18,8 +18,8 @@ BIGQUERY_DATASET = "rizky_biodiesel_capstone3"
 
 default_args = {
     'owner': 'airflow',
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 5,
+    'retry_delay': timedelta(seconds=30),
 }
 
 with DAG(
@@ -96,23 +96,24 @@ with DAG(
         with TaskGroup(group_id = f"group_{table['name']}") as group:
             ensure_table_task = PythonOperator(
                 task_id = f"Ensure_stg_{table['name']}",
-                python_callable=create_table_staging,
+                python_callable=create_table_with_delay,
                 op_kwargs={
                     "table_name": table['name'],
                     "bq_schema": table['bq_schema']
-                }
+                },
             )
-        extract_and_load_task = PythonOperator(
-            task_id = f"extract_and_load_stg_{table['name']}",
-            python_callable=insert_incremental_data_to_bq,
-            op_kwargs={
-                "table_name" : table['name'],
-                "db_schema" :"public",
-                "date_column": "created_at",
-                "partition_field": table["partition_field"],
-                "h_minus": 2,
+            
+            extract_and_load_task = PythonOperator(
+                task_id = f"extract_and_load_stg_{table['name']}",
+                python_callable=insert_incremental_data_to_bq,
+                op_kwargs={
+                    "table_name" : table['name'],
+                    "db_schema" :"public",
+                    "date_column": "created_at",
+                    "partition_field": table["partition_field"],
+                    "h_minus": 1,
 
-            }
+                },
         )
 
-    ensure_table_task
+    ensure_table_task >>  extract_and_load_task
