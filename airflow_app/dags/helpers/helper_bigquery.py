@@ -128,7 +128,7 @@ def replicate_table(table_name, unique_key, partition_field):
         CLUSTER BY {unique_key} AS
         SELECT * EXCEPT(row_num)
         FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY {unique_key} ORDER BY {partition_field} DESC) as row_num
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY {unique_key} ORDER BY {unique_key} ASC) as row_num
             FROM `{staging_table_id}`
         ) WHERE row_num = 1;
         """

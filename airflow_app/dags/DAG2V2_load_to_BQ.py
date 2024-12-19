@@ -7,7 +7,7 @@ from decimal import Decimal
 import psycopg2
 import os
 import pytz
-from helpers.helper_bigquery import db_connection, table_exists, create_table_staging, serialize_value,extract_from_postgre, insert_incremental_data_to_bq, create_table_with_delay, replicate_table
+from helpers.helper_bigquery import insert_incremental_data_to_bq, create_table_with_delay, replicate_table, create_sales_dashboard
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/credentials.json"
 client = bigquery.Client()
@@ -130,4 +130,10 @@ with DAG(
                 },
             )
 
-    ensure_table_task >>  extract_and_load_task >> final_table_task
+
+    sales_dashboard_task = PythonOperator(
+        task_id = f"generate_data_for_sales_dashboard",
+        python_callable=create_sales_dashboard,
+    )
+
+    ensure_table_task >>  extract_and_load_task >> final_table_task >> sales_dashboard_task
