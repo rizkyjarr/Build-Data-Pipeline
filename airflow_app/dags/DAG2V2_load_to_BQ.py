@@ -11,25 +11,26 @@ from helpers.helper_bigquery import insert_incremental_data_to_bq, create_table_
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/credentials.json"
 client = bigquery.Client()
-local_tz = pytz.timezone('Asia/Jakarta')
+jakarta_tz = pytz.timezone('Asia/Jakarta')
 
 BIGQUERY_PROJECT = "purwadika"
 BIGQUERY_DATASET = "rizky_biodiesel_capstone3"
 
 default_args = {
     'owner': 'airflow',
-    'retries': 5,
+    'retries': 5, #i made retries to make sure ensuring table and creating table is carried out before extracting data
     'retry_delay': timedelta(seconds=30),
 }
 
 with DAG(
     dag_id="DAG2_load_to_BQ_V2",
     default_args=default_args,
-    schedule_interval="0 9 * * *",
+    schedule_interval="0 3 * * *", # update every 10am WIB
     start_date=datetime(2024, 1, 1),
     catchup=False,
 ) as dag:
 
+    #declare parameters   
     tables = [
         {
             "name": "sales_transactions",
@@ -93,6 +94,8 @@ with DAG(
         python_callable=create_sales_dashboard,
     )
 
+
+    #declare loop for every table, it consists of ensuring table existence, insert data, and replicate for final data table
     for table in tables:
         with TaskGroup(group_id=f"group_{table['name']}") as group:
             ensure_table_task = PythonOperator(
@@ -126,7 +129,7 @@ with DAG(
                 },
             )
 
-            # Explicitly define task dependencies for each table
+            #declare task dependency for sequential process
             ensure_table_task >> extract_and_load_task >> final_table_task
-                # Add dependency to sales_dashboard_task
+                # add sub-dependency for creating dashboard, it will be processed after all is finished.
             final_table_task >> sales_dashboard_task
