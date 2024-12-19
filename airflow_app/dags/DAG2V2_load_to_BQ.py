@@ -25,15 +25,14 @@ default_args = {
 with DAG(
     dag_id="DAG2_load_to_BQ_V2",
     default_args=default_args,
-    schedule_interval="0 9 * * *", 
+    schedule_interval="0 9 * * *",
     start_date=datetime(2024, 1, 1),
-    catchup=False
+    catchup=False,
 ) as dag:
-    
+
     tables = [
         {
             "name": "sales_transactions",
-            # "db_schema" : "public",
             "bq_schema": [
                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
                 bigquery.SchemaField("sale_date", "DATE"),
@@ -48,11 +47,9 @@ with DAG(
             "date_column": "created_at",
             "partition_field": "created_at",
             "unique_key": "id",
-            # "h_minus" : 1,
         },
         {
             "name": "customer",
-            # "db_schema" : "public",
             "bq_schema": [
                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
                 bigquery.SchemaField("name", "STRING"),
@@ -63,11 +60,9 @@ with DAG(
             "date_column": "created_at",
             "partition_field": "created_at",
             "unique_key": "id",
-            # "h_minus" : 1,
         },
         {
             "name": "product",
-            # "db_schema" : "public",
             "bq_schema": [
                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
                 bigquery.SchemaField("name", "STRING"),
@@ -78,11 +73,9 @@ with DAG(
             "date_column": "created_at",
             "partition_field": "created_at",
             "unique_key": "id",
-            # "h_minus" : 1,
         },
         {
             "name": "region",
-            # "db_schema" : "public",
             "bq_schema": [
                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
                 bigquery.SchemaField("region_name", "STRING"),
@@ -92,48 +85,48 @@ with DAG(
             "date_column": "created_at",
             "partition_field": "created_at",
             "unique_key": "id",
-            # "h_minus" : 1,
-        }
+        },
     ]
 
+    sales_dashboard_task = PythonOperator(
+        task_id="generate_data_for_sales_dashboard",
+        python_callable=create_sales_dashboard,
+    )
+
     for table in tables:
-        with TaskGroup(group_id = f"group_{table['name']}") as group:
+        with TaskGroup(group_id=f"group_{table['name']}") as group:
             ensure_table_task = PythonOperator(
-                task_id = f"Ensure_stg_{table['name']}",
+                task_id=f"Ensure_stg_{table['name']}",
                 python_callable=create_table_with_delay,
                 op_kwargs={
-                    "table_name": table['name'],
-                    "bq_schema": table['bq_schema']
+                    "table_name": table["name"],
+                    "bq_schema": table["bq_schema"],
                 },
             )
-            
+
             extract_and_load_task = PythonOperator(
-                task_id = f"extract_and_load_stg_{table['name']}",
+                task_id=f"extract_and_load_stg_{table['name']}",
                 python_callable=insert_incremental_data_to_bq,
                 op_kwargs={
-                    "table_name" : table['name'],
-                    "db_schema" :"public",
-                    "date_column": "created_at",
+                    "table_name": table["name"],
+                    "db_schema": "public",
+                    "date_column": table["date_column"],
                     "partition_field": table["partition_field"],
                     "h_minus": 1,
-
                 },
             )
 
             final_table_task = PythonOperator(
-                task_id = f"finalize_stg_{table['name']}",
+                task_id=f"finalize_stg_{table['name']}",
                 python_callable=replicate_table,
                 op_kwargs={
-                    "table_name" : table['name'],
-                    "unique_key" : table['unique_key'],
+                    "table_name": table["name"],
+                    "unique_key": table["unique_key"],
                     "partition_field": table["partition_field"],
                 },
             )
 
-
-    sales_dashboard_task = PythonOperator(
-        task_id = f"generate_data_for_sales_dashboard",
-        python_callable=create_sales_dashboard,
-    )
-
-    ensure_table_task >>  extract_and_load_task >> final_table_task >> sales_dashboard_task
+            # Explicitly define task dependencies for each table
+            ensure_table_task >> extract_and_load_task >> final_table_task
+                # Add dependency to sales_dashboard_task
+            final_table_task >> sales_dashboard_task
