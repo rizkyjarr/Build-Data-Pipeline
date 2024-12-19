@@ -64,7 +64,7 @@ def generate_region():
     return region_data
 
 def generate_sales_transactions(conn):
-    conn = db_connection()
+    conn = db_connection
     # Get product_id and price from product table
     with conn.cursor() as cur:
         cur.execute("SELECT id, price FROM product ORDER BY RANDOM() LIMIT 1")

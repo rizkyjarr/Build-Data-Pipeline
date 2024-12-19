@@ -7,7 +7,7 @@ import pandas as pd
 from decimal import Decimal
 
 # Set Google Cloud Credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\airflow_app\credentials.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\airflow_app\credentials.json"
 client = bigquery.Client()
 
 BIGQUERY_PROJECT = "purwadika"
@@ -95,55 +95,55 @@ def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_
     else:
         print(f"Successfully inserted {len(data_to_insert)} rows into staging table {table_id}")
 
-tables = [
-        {
-            "name": "sales_transactions",
-            "bq_schema": [
-                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
-                bigquery.SchemaField("sale_date", "DATE"),
-                bigquery.SchemaField("product_id", "INTEGER"),
-                bigquery.SchemaField("customer_id", "INTEGER"),
-                bigquery.SchemaField("region_id", "INTEGER"),
-                bigquery.SchemaField("quantity", "INTEGER"),
-                bigquery.SchemaField("price", "NUMERIC"),
-                bigquery.SchemaField("total_revenue", "NUMERIC"),
-                bigquery.SchemaField("created_at", "TIMESTAMP"),
-            ],
-            "partition_field": "created_at"
-        },
-        {
-            "name": "customer",
-            "bq_schema": [
-                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
-                bigquery.SchemaField("name", "STRING"),
-                bigquery.SchemaField("sector", "STRING"),
-                bigquery.SchemaField("type", "STRING"),
-                bigquery.SchemaField("created_at", "TIMESTAMP"),
-            ],
-            "partition_field": "created_at"
-        },
-        {
-            "name": "product",
-            "bq_schema": [
-                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
-                bigquery.SchemaField("name", "STRING"),
-                bigquery.SchemaField("type", "STRING"),
-                bigquery.SchemaField("price", "INTEGER"),
-                bigquery.SchemaField("created_at", "TIMESTAMP"),
-            ],
-            "partition_field": "created_at"
-        },
-        {
-            "name": "region2",
-            "bq_schema": [
-                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
-                bigquery.SchemaField("region_name", "STRING"),
-                bigquery.SchemaField("province", "STRING"),
-                bigquery.SchemaField("created_at", "TIMESTAMP"),
-            ],
-            "partition_field": "created_at"
-        }
-    ]
+# tables = [
+#         {
+#             "name": "sales_transactions",
+#             "bq_schema": [
+#                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+#                 bigquery.SchemaField("sale_date", "DATE"),
+#                 bigquery.SchemaField("product_id", "INTEGER"),
+#                 bigquery.SchemaField("customer_id", "INTEGER"),
+#                 bigquery.SchemaField("region_id", "INTEGER"),
+#                 bigquery.SchemaField("quantity", "INTEGER"),
+#                 bigquery.SchemaField("price", "NUMERIC"),
+#                 bigquery.SchemaField("total_revenue", "NUMERIC"),
+#                 bigquery.SchemaField("created_at", "TIMESTAMP"),
+#             ],
+#             "partition_field": "created_at"
+#         },
+#         {
+#             "name": "customer",
+#             "bq_schema": [
+#                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+#                 bigquery.SchemaField("name", "STRING"),
+#                 bigquery.SchemaField("sector", "STRING"),
+#                 bigquery.SchemaField("type", "STRING"),
+#                 bigquery.SchemaField("created_at", "TIMESTAMP"),
+#             ],
+#             "partition_field": "created_at"
+#         },
+#         {
+#             "name": "product",
+#             "bq_schema": [
+#                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+#                 bigquery.SchemaField("name", "STRING"),
+#                 bigquery.SchemaField("type", "STRING"),
+#                 bigquery.SchemaField("price", "INTEGER"),
+#                 bigquery.SchemaField("created_at", "TIMESTAMP"),
+#             ],
+#             "partition_field": "created_at"
+#         },
+#         {
+#             "name": "region2",
+#             "bq_schema": [
+#                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+#                 bigquery.SchemaField("region_name", "STRING"),
+#                 bigquery.SchemaField("province", "STRING"),
+#                 bigquery.SchemaField("created_at", "TIMESTAMP"),
+#             ],
+#             "partition_field": "created_at"
+#         }
+#     ]
 
 # # Trial 1 table_exists --
 # for table in tables:
@@ -183,24 +183,24 @@ tables = [
 #     print("No data extracted.")
 
 # Trial 4 load data_to_bigquery
-table_name = "sales_transactions"
-db_schema = "public"
-bq_schema = [
-                bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
-                bigquery.SchemaField("sale_date", "DATE"),
-                bigquery.SchemaField("product_id", "INTEGER"),
-                bigquery.SchemaField("customer_id", "INTEGER"),
-                bigquery.SchemaField("region_id", "INTEGER"),
-                bigquery.SchemaField("quantity", "INTEGER"),
-                bigquery.SchemaField("price", "NUMERIC"),
-                bigquery.SchemaField("total_revenue", "NUMERIC"),
-                bigquery.SchemaField("created_at", "TIMESTAMP"),
-            ]
-date_column = "created_at"  # Replace with your date column
-partition_field = "created_at"  # Optional partition field, can be left as None
-h_minus = 3  # Extract data for 1 day ago
+# table_name = "sales_transactions"
+# db_schema = "public"
+# bq_schema = [
+#                 bigquery.SchemaField("id", "INTEGER", mode="REQUIRED"),
+#                 bigquery.SchemaField("sale_date", "DATE"),
+#                 bigquery.SchemaField("product_id", "INTEGER"),
+#                 bigquery.SchemaField("customer_id", "INTEGER"),
+#                 bigquery.SchemaField("region_id", "INTEGER"),
+#                 bigquery.SchemaField("quantity", "INTEGER"),
+#                 bigquery.SchemaField("price", "NUMERIC"),
+#                 bigquery.SchemaField("total_revenue", "NUMERIC"),
+#                 bigquery.SchemaField("created_at", "TIMESTAMP"),
+#             ]
+# date_column = "created_at"  # Replace with your date column
+# partition_field = "created_at"  # Optional partition field, can be left as None
+# h_minus = 3  # Extract data for 1 day ago
 
-# create_table_staging(table_name, bq_schema)
-insert_incremental_data_to_bq(table_name, db_schema, date_column,partition_field,h_minus)
+# # create_table_staging(table_name, bq_schema)
+# insert_incremental_data_to_bq(table_name, db_schema, date_column,partition_field,h_minus)
 
 

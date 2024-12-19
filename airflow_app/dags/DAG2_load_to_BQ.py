@@ -180,7 +180,7 @@ with DAG(
                     "schema": table["schema"],
                     "date_column": "created_at",
                     "partition_field": table["partition_field"],
-                    "h_minus": 1,
+                    "h_minus": 3
                 }
             )
 
