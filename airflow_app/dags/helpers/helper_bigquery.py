@@ -116,10 +116,58 @@ def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_
         print(f"Successfully inserted {len(data_to_insert)} rows into staging table {table_id}")
 
 
-def replicate_table(staging_table, final_table, unique_key, partition_field):
+def replicate_table(table_name, unique_key, partition_field):
 
     client = bigquery.Client()
-    staging_table_id = f"{BIGQUERY_PROJECT}.{}"
+    staging_table_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.stg_{table_name}"
+    final_table_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.{table_name}"
+
+    query = f"""
+        CREATE OR REPLACE TABLE `{final_table_id}`
+        PARTITION BY DATE({partition_field})
+        CLUSTER BY {unique_key} AS
+        SELECT * EXCEPT(row_num)
+        FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY {unique_key} ORDER BY {partition_field} DESC) as row_num
+            FROM `{staging_table_id}`
+        ) WHERE row_num = 1;
+        """
+    
+    query_job = client.query(query)
+    query_job.result()
+    print(f"Final table for {final_table_id} has been successfully created")
+
+def create_sales_dashboard():
+    client = bigquery.Client()
+    query = f"""
+    CREATE OR REPLACE TABLE `{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.sales_dashboard` AS
+    SELECT
+        s.sale_date,
+        c.name AS customer_name,
+        c.type AS customer_type,
+        r.region_name,
+        p.name AS product_name,
+        COUNT(s.id) AS transaction_count,
+        SUM(s.quantity) AS total_quantity,
+        SUM(s.total_revenue) AS total_revenue
+    FROM
+        `{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.sales_transactions` s
+    JOIN
+        `{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.region` r
+        ON s.region_id = r.id
+    JOIN
+        `{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.product` p
+        ON s.product_id = p.id
+    JOIN
+        `{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.customer` c
+        ON s.customer_id = c.id
+    GROUP BY
+        s.sale_date, c.name, c.type, r.region_name, p.name;
+    """
+
+    query_job = client.query(query)
+    query_job.result()  # Wait for the query to finish
+    print("Sales dashboard has been created successfully.")
 
 # tables = [
 #         {

@@ -7,7 +7,7 @@ from decimal import Decimal
 import psycopg2
 import os
 import pytz
-from helpers.helper_bigquery import db_connection, table_exists, create_table_staging, serialize_value,extract_from_postgre, insert_incremental_data_to_bq, create_table_with_delay
+from helpers.helper_bigquery import db_connection, table_exists, create_table_staging, serialize_value,extract_from_postgre, insert_incremental_data_to_bq, create_table_with_delay, replicate_table
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/opt/airflow/credentials.json"
 client = bigquery.Client()
@@ -47,6 +47,7 @@ with DAG(
             ],
             "date_column": "created_at",
             "partition_field": "created_at",
+            "unique_key": "id",
             # "h_minus" : 1,
         },
         {
@@ -61,6 +62,7 @@ with DAG(
             ],
             "date_column": "created_at",
             "partition_field": "created_at",
+            "unique_key": "id",
             # "h_minus" : 1,
         },
         {
@@ -75,6 +77,7 @@ with DAG(
             ],
             "date_column": "created_at",
             "partition_field": "created_at",
+            "unique_key": "id",
             # "h_minus" : 1,
         },
         {
@@ -88,6 +91,7 @@ with DAG(
             ],
             "date_column": "created_at",
             "partition_field": "created_at",
+            "unique_key": "id",
             # "h_minus" : 1,
         }
     ]
@@ -114,6 +118,16 @@ with DAG(
                     "h_minus": 1,
 
                 },
-        )
+            )
 
-    ensure_table_task >>  extract_and_load_task
+            final_table_task = PythonOperator(
+                task_id = f"finalize_stg_{table['name']}",
+                python_callable=replicate_table,
+                op_kwargs={
+                    "table_name" : table['name'],
+                    "unique_key" : table['unique_key'],
+                    "partition_field": table["partition_field"],
+                },
+            )
+
+    ensure_table_task >>  extract_and_load_task >> final_table_task
