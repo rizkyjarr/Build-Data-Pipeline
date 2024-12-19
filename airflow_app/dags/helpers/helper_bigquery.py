@@ -51,55 +51,38 @@ def extract_from_postgre(table_name, db_schema, date_column, partition_field=Non
     
     # Base query for selecting data based on the computed target_date
     query = f"SELECT * FROM {db_schema}.{table_name} WHERE DATE({date_column}) = '{target_date}'"
-    
-    # Add partition_field to query if it's provided
-    if partition_field:
-        query += f" AND {partition_field} IS NOT NULL"
-    
+       
     # Connect to your PostgreSQL database
     conn = db_connection()
     cursor = conn.cursor()
 
+    rows = []
     try:
-        cursor.execute(query)
-        data = cursor.fetchall()
-        
-        if not data:
-            print(f"No data found for {target_date}.")
-            return pd.DataFrame() 
-
-        column_names = [desc[0] for desc in cursor.description]
-        df = pd.DataFrame(data, columns=column_names)
-
-
-        print(f"Table {table_name} has been succesfully extracted, {df}")
-        return df
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
-
+        with conn.cursor() as cursor:
+            cursor.execute(query)
+            if cursor.rowcount == 0:
+                print(f"No rows found for table {table_name} on {target_date}.")
+                return
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            incremental_data = [dict(zip(columns, row)) for row in rows]
+            print(f"Data has been successfully extracted: attempting to insert {len(incremental_data)} rows to staging table")
+            return incremental_data
     finally:
-        cursor.close()
         conn.close()
 
-def load_extracted_df_to_bigquery(table_name, db_schema, date_column, partition_field=None, h_minus=1):
+def insert_incremental_data_to_bq(table_name, db_schema, date_column, partition_field=None, h_minus=1):
+
+    data_to_insert = extract_from_postgre(table_name, db_schema, date_column, partition_field, h_minus)
 
     table_id = f"{BIGQUERY_PROJECT}.{BIGQUERY_DATASET}.stg_{table_name}"
-    df = extract_from_postgre(table_name, db_schema, date_column, partition_field=None, h_minus=1)
 
-    try:
-        job = client.load_table_from_dataframe(df, table_id, 
-                                               job_config=bigquery.LoadJobConfig(
-                                                   write_disposition="WRITE_APPEND"  # Ensures data is appended
-                                               ))
+    errors = client.insert_rows_json(table_id, data_to_insert)
 
-        job.result()
-
-        print(f"Data loaded succesfully into {table_id}")
-
-    except Exception as e:
-        print(f"error loading data into BigQuery: {e}")
+    if errors:
+        print("Errors occured while inserting data into BigQuery")
+    else:
+        print(f"Successfully inserted {len(data_to_insert)} rows into staging table {table_id}")
 
 tables = [
         {
@@ -206,6 +189,6 @@ date_column = "created_at"  # Replace with your date column
 partition_field = "created_at"  # Optional partition field, can be left as None
 h_minus = 1  # Extract data for 1 day ago
 
-extract_from_postgre(table_name,db_schema, date_column, partition_field, h_minus)
+insert_incremental_data_to_bq(table_name, db_schema, date_column,partition_field,h_minus)
 
 
