@@ -105,7 +105,7 @@ def generate_sales_transactions(conn):
         #declare parameters for sales_transactions data
         quantity = random.randint(5000, 10000)  # Random quantity in liters
         total_revenue = quantity * price  # Calculate total revenue
-        created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        created_at_str
 
         sales_transactions_data = {
             "sale_date": datetime.now().strftime("%Y-%m-%d"),
