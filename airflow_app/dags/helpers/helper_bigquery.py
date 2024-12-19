@@ -4,6 +4,7 @@ import os
 import psycopg2
 from datetime import datetime, timedelta, date
 import pandas as pd
+from decimal import Decimal
 
 # Set Google Cloud Credentials
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\user\OneDrive\RFA _Personal Files\02. COURSE\Purwadhika_Data Engineering\Purwadhika_VS\capstone3_purwadhika\airflow_app\credentials.json"
@@ -43,6 +44,14 @@ def create_table_staging(table_name, bq_schema):
         table = client.create_table(table)
 
         print(f"Created table {table.project}.{table.dataset_id}.stg_{table.table_id}, "f"partitioned on column {table.time_partitioning.field}.")
+
+def serialize_value(value):
+    """Helper function to convert non-serializable objects to serializable ones."""
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()  # Convert dates to ISO 8601 strings
+    elif isinstance(value, Decimal):
+        return float(value)  # Convert Decimal to float
+    return value       
         
 def extract_from_postgre(table_name, db_schema, date_column, partition_field=None, h_minus=1):
    
@@ -65,7 +74,9 @@ def extract_from_postgre(table_name, db_schema, date_column, partition_field=Non
                 return
             columns = [desc[0] for desc in cursor.description]
             rows = cursor.fetchall()
-            incremental_data = [dict(zip(columns, row)) for row in rows]
+            incremental_data = [
+                {col: serialize_value(val) for col, val in zip(columns, row)}
+                for row in rows]
             print(f"Data has been successfully extracted: attempting to insert {len(incremental_data)} rows to staging table")
             return incremental_data
     finally:
@@ -187,8 +198,9 @@ bq_schema = [
             ]
 date_column = "created_at"  # Replace with your date column
 partition_field = "created_at"  # Optional partition field, can be left as None
-h_minus = 1  # Extract data for 1 day ago
+h_minus = 3  # Extract data for 1 day ago
 
+# create_table_staging(table_name, bq_schema)
 insert_incremental_data_to_bq(table_name, db_schema, date_column,partition_field,h_minus)
 
 
