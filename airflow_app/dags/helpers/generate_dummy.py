@@ -108,7 +108,7 @@ def generate_sales_transactions(conn):
         created_at_str
 
         sales_transactions_data = {
-            "sale_date": datetime.now().strftime("%Y-%m-%d"),
+            "sale_date": datetime.now().astimezone(local_tz).strftime("%Y-%m-%d"),
             "product_id": product_id,
             "customer_id": customer_id,
             "region_id": region_id,
